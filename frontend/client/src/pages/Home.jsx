@@ -1,5 +1,6 @@
 import Navbar from "../components/Navbar"
 import Hero from "../components/Hero"
+import AppMarket from "../components/AppMarket"
 import NFTSection from "../components/NFTSection"
 
 const Home = () => {
@@ -7,6 +8,7 @@ const Home = () => {
     <>
       <Navbar />
       <Hero />
+      <AppMarket />
       <NFTSection />
     </>
   )

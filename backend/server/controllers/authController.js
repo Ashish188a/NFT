@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 
-// REGISTER
+// For REGISTER
 exports.register = async(req,res)=>{
 
 try{
@@ -42,7 +42,7 @@ catch(error){
 
 
 
-// LOGIN
+// To LOGIN
 exports.login = async(req,res)=>{
 
 try{

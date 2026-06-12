@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../App.css";
@@ -39,7 +40,7 @@ const Register = () => {
       // success → go to login page
       navigate("/login");
 
-    } catch (err) {
+    } catch {
       setError("Cannot connect to server. Is the backend running?");
     } finally {
       setLoading(false);

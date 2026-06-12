@@ -224,6 +224,50 @@ const CONTRACT_ABI = [
 		"inputs": [
 			{
 				"indexed": true,
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "buyer",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "price",
+				"type": "uint256"
+			}
+		],
+		"name": "NFTBought",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "price",
+				"type": "uint256"
+			}
+		],
+		"name": "NFTListed",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
 				"internalType": "address",
 				"name": "previousOwner",
 				"type": "address"
@@ -308,6 +352,19 @@ const CONTRACT_ABI = [
 				"type": "uint256"
 			}
 		],
+		"name": "buyNFT",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
 		"name": "getApproved",
 		"outputs": [
 			{
@@ -346,6 +403,24 @@ const CONTRACT_ABI = [
 	{
 		"inputs": [
 			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "price",
+				"type": "uint256"
+			}
+		],
+		"name": "listForSale",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
 				"internalType": "address",
 				"name": "to",
 				"type": "address"
@@ -354,6 +429,11 @@ const CONTRACT_ABI = [
 				"internalType": "string",
 				"name": "uri",
 				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "sellingPrice",
+				"type": "uint256"
 			}
 		],
 		"name": "mint",
@@ -550,6 +630,25 @@ const CONTRACT_ABI = [
 		"inputs": [
 			{
 				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "tokenPrices",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
 				"name": "tokenId",
 				"type": "uint256"
 			}
@@ -609,6 +708,7 @@ const CONTRACT_ABI = [
 		"type": "function"
 	}
 ];
+
 
 function CreateNFT() {
   const navigate = useNavigate();
@@ -675,21 +775,71 @@ function CreateNFT() {
         throw new Error(data.message || "Upload failed");
       }
 
-      const { tokenURI } = data;
+      const { tokenURI, imageURL } = data;
       setStatus("Upload successful! Waiting for MetaMask...");
 
       // 4. Contract call
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
-      const mintTx = await contract.mint(selectedAccount, tokenURI, {
-        value: ethers.parseEther(price)
-      });
+      const mintTx = await contract.mint(
+        selectedAccount, 
+        tokenURI, 
+        ethers.parseEther(price), // This sets the selling price on the blockchain
+        { value: ethers.parseEther("0.001") } // This is the platform mint fee
+      );
 
       setStatus("Transaction pending...");
       const receipt = await mintTx.wait();
 
-      setStatus(`Success! Transaction Hash: ${receipt.hash}`);
-      alert("NFT minted successfully!");
+      // Find Transfer event to get tokenId
+      const transferEvent = receipt.logs.find(log => {
+        try {
+          const parsedLog = contract.interface.parseLog(log);
+          return parsedLog && parsedLog.name === "Transfer";
+        } catch {
+          return false;
+        }
+      });
+      
+      let tokenId = null;
+      if (transferEvent) {
+        const parsed = contract.interface.parseLog(transferEvent);
+        tokenId = Number(parsed.args.tokenId);
+      }
+
+      setStatus("NFT Minted! Saving to collections...");
+
+      // 5. Save to Database
+      try {
+        const saveResponse = await fetch("/api/nft/save", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: nftName,
+            description: description,
+            imageURL: imageURL,
+            tokenURI: tokenURI,
+            creatorAddress: selectedAccount,
+            transactionHash: receipt.hash,
+            price: price, // Now using the state value correctly
+            tokenId: tokenId
+          }),
+        });
+
+        if (!saveResponse.ok) {
+          const errorData = await saveResponse.json();
+          console.error("Database save failed:", errorData);
+          alert(`NFT Minted on Blockchain, but failed to save in Collections: ${errorData.message || "Unknown error"}`);
+        } else {
+          alert("NFT minted and saved to your collections successfully!");
+        }
+      } catch (dbError) {
+        console.error("Error saving to database:", dbError);
+        alert("NFT minted on Blockchain, but server was unreachable to save it in Collections.");
+      }
       
       // Clear form
       setNftName("");

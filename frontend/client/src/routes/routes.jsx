@@ -5,6 +5,7 @@ import Home from "../pages/Home"
 import Login from "../pages/Login"
 import Register from "../pages/Register";
 import CreateNFT from "../pages/CreateNFT";
+import Explore from "../pages/Explore";
 
 export const routes = createBrowserRouter([
     {
@@ -26,5 +27,9 @@ export const routes = createBrowserRouter([
     {
     path: "/create-nft",
     element: <CreateNFT />
+  },
+  {
+    path: "/explore",
+    element: <Explore />
   }
 ])

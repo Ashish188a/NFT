@@ -33,7 +33,7 @@ const Login = () => {
 
       // success  go to home
       navigate("/");
-    } catch (err) {
+    } catch {
       setError("Cannot connect to server. Is the backend running?");
     } finally {
       setLoading(false);
